@@ -2,7 +2,10 @@ package com.oec.publishing;
 
 import com.oec.publishing.core.Part;
 import com.oec.publishing.db.PartDAO;
-import com.oec.publishing.resources.PublishingResource;
+import com.oec.publishing.core.Oem;
+import com.oec.publishing.db.OemDAO;
+import com.oec.publishing.resources.PartResource;
+import com.oec.publishing.resources.OemResource;
 import io.dropwizard.Application;
 import io.dropwizard.auth.AuthFactory;
 import io.dropwizard.auth.basic.BasicAuthFactory;
@@ -19,12 +22,20 @@ public class PublishingApplication extends Application<PublishingServiceConfigur
     /**
      * Hibernate bundle.
      */
-    private final HibernateBundle<PublishingServiceConfiguration> hibernateBundle = new HibernateBundle<PublishingServiceConfiguration>(Part.class) {
+    private final HibernateBundle<PublishingServiceConfiguration> hibernateBundle = new HibernateBundle<PublishingServiceConfiguration>(Part.class, Oem.class) {
 		@Override
 		public DataSourceFactory getDataSourceFactory(PublishingServiceConfiguration configuration) {
 			return configuration.getDataSourceFactory();
 		}
 	};
+	
+	/*
+	private final HibernateBundle<PublishingServiceConfiguration> hibernateBundle2 = new HibernateBundle<PublishingServiceConfiguration>(Oem.class) {
+		@Override
+		public DataSourceFactory getDataSourceFactory(PublishingServiceConfiguration configuration) {
+			return configuration.getDataSourceFactory();
+		}
+	};*/
 
     /**
      * The main method of the application.
@@ -50,12 +61,13 @@ public class PublishingApplication extends Application<PublishingServiceConfigur
     public void run(final PublishingServiceConfiguration configuration, final Environment environment) {
         //Create Part DAO.
         final PartDAO partDAO = new PartDAO(hibernateBundle.getSessionFactory());
+		//Create OEM DAO.
+        final OemDAO oemDAO = new OemDAO(hibernateBundle.getSessionFactory());
         //Create Jersey client.
         final Client client = new JerseyClientBuilder(environment).using(configuration.getJerseyClientConfiguration()).build(getName());
-        //Register a database-backed resource.
-        environment.jersey().register(new PublishingResource(partDAO));
-        //Register a resource using Jersey client.
-        //environment.jersey().register(new ConverterResource(client,configuration.getApiURL(),configuration.getApiKey()));
+        //register the DAO objects.
+        environment.jersey().register(new PartResource(partDAO));
+		environment.jersey().register(new OemResource(oemDAO));
     }
 
 }
