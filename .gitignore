@@ -1,1 +1,7 @@
 /MyPublishingAPI/target/
+/bin
+/obj
+*.user
+*.suo
+*.sln.cache
+Thumbs.db
