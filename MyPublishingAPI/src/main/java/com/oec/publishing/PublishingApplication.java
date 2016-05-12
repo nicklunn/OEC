@@ -6,15 +6,20 @@ import com.oec.publishing.core.Oem;
 import com.oec.publishing.db.OemDAO;
 import com.oec.publishing.resources.PartResource;
 import com.oec.publishing.resources.OemResource;
+import com.oec.publishing.health.AppHealthCheck;
+
 import io.dropwizard.Application;
-import io.dropwizard.auth.AuthFactory;
-import io.dropwizard.auth.basic.BasicAuthFactory;
 import io.dropwizard.client.JerseyClientBuilder;
 import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.hibernate.HibernateBundle;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
+import com.codahale.metrics.health.HealthCheckRegistry; 
 import javax.ws.rs.client.Client;
+import org.eclipse.jetty.servlets.CrossOriginFilter;
+import javax.servlet.DispatcherType;
+import java.util.EnumSet;
+import javax.servlet.FilterRegistration;
 
 
 public class PublishingApplication extends Application<PublishingServiceConfiguration> {
@@ -59,15 +64,31 @@ public class PublishingApplication extends Application<PublishingServiceConfigur
 
     @Override
     public void run(final PublishingServiceConfiguration configuration, final Environment environment) {
+        // Enable CORS headers
+        final FilterRegistration.Dynamic cors =
+            environment.servlets().addFilter("CORS", CrossOriginFilter.class);
+
+        // Configure CORS parameters
+        cors.setInitParameter("allowedOrigins", "*");
+        cors.setInitParameter("allowedHeaders", "*");
+        cors.setInitParameter("allowedMethods", "OPTIONS,GET,PUT,POST,DELETE,HEAD");
+
+        // Add URL mapping
+        cors.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
         //Create Part DAO.
         final PartDAO partDAO = new PartDAO(hibernateBundle.getSessionFactory());
 		//Create OEM DAO.
         final OemDAO oemDAO = new OemDAO(hibernateBundle.getSessionFactory());
         //Create Jersey client.
         final Client client = new JerseyClientBuilder(environment).using(configuration.getJerseyClientConfiguration()).build(getName());
+        
         //register the DAO objects.
         environment.jersey().register(new PartResource(partDAO));
-		environment.jersey().register(new OemResource(oemDAO));
+	environment.jersey().register(new OemResource(oemDAO));
+        
+        environment.healthChecks().register("application", new AppHealthCheck());
+        final HealthCheckRegistry registry = new HealthCheckRegistry();
+        //registry.register("application", new AppHealthCheck());
     }
 
 }
